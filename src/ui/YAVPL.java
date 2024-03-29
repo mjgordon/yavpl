@@ -29,8 +29,7 @@ public class YAVPL extends PApplet {
 		
 		editor = new Editor(g_editor);
 		
-		editor.head = new Root();
-		editor.point = editor.head;
+		editor.point = new NOOP();
 	}
 	
 	
@@ -49,6 +48,9 @@ public class YAVPL extends PApplet {
 		
 		image(g_editor,gutter,gutter);
 		image(g_vm_monitor,g_editor.width + (gutter * 2), gutter);
+		
+		fill(0);
+		text((int)frameRate, 10, 10);
 	}
 	
 	

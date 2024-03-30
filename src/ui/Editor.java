@@ -5,6 +5,7 @@ import processing.core.PApplet;
 import processing.core.PGraphics;
 import processing.core.PImage;
 import processing.core.PVector;
+import vm.VM;
 
 import static ui.Bridge.p;
 
@@ -60,8 +61,6 @@ public class Editor {
 	
 	private class LaxelDisplay {
 		public Laxel laxel;
-		public int x = 0;
-		public int y = 0;
 		public int width = 0;
 		public int height = 0;
 		
@@ -90,34 +89,39 @@ public class Editor {
 		int greatestOutletWidth = 0;
 		
 		
-		if (direction == Laxel.Direction.INLET || direction == Laxel.Direction.BOTH) {
-			for (Laxel.Inlet inlet : laxel.inlets) {
-				if (inlet == null || inlet.target == null || depth >= maxDepth) {
+		for (Laxel.Inlet inlet : laxel.inlets) {
+			ld.inletTextWidth = Math.max(ld.inletTextWidth, Math.max(p.textWidth(inlet.name),p.textWidth(inlet.dataType.getSimpleName())));
+			
+			if (direction == Laxel.Direction.INLET || direction == Laxel.Direction.BOTH) {
+				if (inlet.target == null || depth >= maxDepth) {
 					ld.inlets.add(null);
 				}
 				else {
 					LaxelDisplay branch = getTree(inlet.target, Laxel.Direction.INLET, depth + 1);
 					ld.inlets.add(branch);
-					ld.inletTextWidth = Math.max(ld.inletTextWidth, p.textWidth(inlet.name));
 					greatestInletWidth = Math.max(greatestInletWidth, branch.width);
 					
 				}
-			}	
-		}
+			}
+			
+		}	
 		
-		if (direction == Laxel.Direction.OUTLET || direction == Laxel.Direction.BOTH) {
-			for (Laxel.Outlet outlet : laxel.outlets) {
-				if (outlet == null || outlet.target == null || depth >= maxDepth) {
+		
+		for (Laxel.Outlet outlet : laxel.outlets) {
+			ld.outletTextWidth = Math.max(ld.outletTextWidth, Math.max(p.textWidth(outlet.name),p.textWidth(outlet.dataType.getSimpleName())));
+			
+			if (direction == Laxel.Direction.OUTLET || direction == Laxel.Direction.BOTH) {
+				if (outlet.target == null || depth >= maxDepth) {
 					ld.outlets.add(null);
 				}
 				else {
 					LaxelDisplay branch = getTree(outlet.target, Laxel.Direction.OUTLET, depth + 1);
 					ld.outlets.add(branch);
-					ld.outletTextWidth = Math.max(ld.outletTextWidth, p.textWidth(outlet.name));
 					greatestOutletWidth = Math.max(greatestOutletWidth, branch.width);
 				}
 			}
 		}
+		
 		
 		int maxIOCount = Math.max(laxel.inlets.length, laxel.outlets.length);
 		ld.height = Math.max(defaultHeight, (ioOffset * maxIOCount) + (gutter * 2));
@@ -163,21 +167,21 @@ public class Editor {
 		canvas.textAlign(PApplet.LEFT, PApplet.CENTER);
 		canvas.text(laxel.displayName, gutter + ld.inletTextWidth + gutter, ld.height / 2);
 		
-		if (direction == Laxel.Direction.INLET || direction == Laxel.Direction.BOTH) {	
-			int iy = 0;
-			for (int i = 0; i < laxel.inlets.length; i++) {
-				Laxel.Inlet inlet = laxel.inlets[i];
-				int y = (i * ioOffset) + (ioOffset / 2) + gutter;
-				canvas.fill(255);
-				canvas.stroke(0);
-				canvas.ellipse(0, y, 10, 10);
-				
-				canvas.fill(0);
-				canvas.noStroke();
-				canvas.textAlign(PApplet.LEFT, PApplet.CENTER);
-				canvas.text(inlet.name, 10, y - 10);
-				canvas.text(inlet.dataType.getSimpleName(), 10, y + 10);
-				
+		int iy = 0;
+		for (int i = 0; i < laxel.inlets.length; i++) {
+			Laxel.Inlet inlet = laxel.inlets[i];
+			int y = (i * ioOffset) + (ioOffset / 2) + gutter;
+			canvas.fill(255);
+			canvas.stroke(0);
+			canvas.ellipse(0, y, 10, 10);
+			
+			canvas.fill(0);
+			canvas.noStroke();
+			canvas.textAlign(PApplet.LEFT, PApplet.CENTER);
+			canvas.text(inlet.name, gutter, y - 10);
+			canvas.text(inlet.dataType.getSimpleName(), gutter, y + 10);
+			
+			if (direction == Laxel.Direction.INLET || direction == Laxel.Direction.BOTH) {	
 				LaxelDisplay ldInlet = ld.inlets.get(i);
 				if (ldInlet != null) {
 					canvas.pushMatrix();
@@ -189,21 +193,21 @@ public class Editor {
 			}
 		}
 		
-		if (direction == Laxel.Direction.OUTLET || direction == Laxel.Direction.BOTH) {	
-			int oy = 0;
-			for (int i = 0; i < laxel.outlets.length; i++) {
-				Laxel.Outlet outlet = laxel.outlets[i];
-				int y = (i * ioOffset) + (ioOffset / 2) + gutter;
-				canvas.fill(255);
-				canvas.stroke(0);
-				canvas.ellipse(ld.width, y, 10, 10);
-				
-				canvas.fill(0);
-				canvas.noStroke();
-				canvas.textAlign(PApplet.RIGHT, PApplet.CENTER);
-				canvas.text(outlet.name, ld.width - 10, y - 10);
-				canvas.text(outlet.dataType.getSimpleName(), ld.width - 10, y + 10);
-				
+		int oy = 0;
+		for (int i = 0; i < laxel.outlets.length; i++) {
+			Laxel.Outlet outlet = laxel.outlets[i];
+			int y = (i * ioOffset) + (ioOffset / 2) + gutter;
+			canvas.fill(255);
+			canvas.stroke(0);
+			canvas.ellipse(ld.width, y, 10, 10);
+			
+			canvas.fill(0);
+			canvas.noStroke();
+			canvas.textAlign(PApplet.RIGHT, PApplet.CENTER);
+			canvas.text(outlet.name, ld.width - gutter, y - 10);
+			canvas.text(outlet.dataType.getSimpleName(), ld.width - gutter, y + 10);
+			
+			if (direction == Laxel.Direction.OUTLET || direction == Laxel.Direction.BOTH) {	
 				LaxelDisplay ldOutlet = ld.outlets.get(i);
 				if (ldOutlet != null) {
 					canvas.pushMatrix();
@@ -211,7 +215,7 @@ public class Editor {
 					oy += ldOutlet.height;
 					renderLaxel(ldOutlet, Laxel.Direction.OUTLET);
 					canvas.popMatrix();
-				}
+				}	
 			}
 		}
 	}
@@ -231,6 +235,11 @@ public class Editor {
 		
 		else if (key == 'd') {
 			dialogs = new DialogMove(Laxel.Direction.OUTLET);
+		}
+		
+		else if (key == 'e') {
+			VM vm = new VM();
+			vm.execute(point);
 		}
 		
 		else if (key == 'i') {
@@ -313,11 +322,13 @@ public class Editor {
 			
 			switch(name) {
 				case "print":
-					output = new LPrint();
+					output = new LaxelPrint();
 				break;
 				case "int":
-					output = new LiteralInt(0);
+					output = new LaxelLiteralInt(0);
 				break;
+				case "format":
+					output = new LaxelFormat();
 			}
 			
 			
@@ -362,7 +373,7 @@ public class Editor {
 		private EditorDialog<String> produceInletId;
 		private EditorDialog<Laxel> produceLaxel;
 		
-		Boolean side = null;
+		Laxel.Direction direction = Laxel.Direction.NONE;
 		int id = -1;
 		
 		public DialogInsert(Laxel parent) {
@@ -376,13 +387,13 @@ public class Editor {
 
 		@Override
 		public Boolean execute() {
-			if (side == true) {
+			if (direction == Laxel.Direction.INLET) {
 				parent.inlets[id].setTarget(newLaxel);
 				newLaxel.outlets[0].setTarget(parent);
 			}
-			else if (side == false) {
-				parent.outlets[id].set(newLaxel);
-				parent.inlets[0].setTarget(parent);
+			else if (direction == Laxel.Direction.OUTLET) {
+				parent.outlets[id].setTarget(newLaxel);
+				newLaxel.inlets[0].setTarget(parent);
 			}
 			return true;
 		}
@@ -392,7 +403,7 @@ public class Editor {
 			height += 20;
 			
 			PImage child = null;
-			if (side == null) {
+			if (direction == Laxel.Direction.NONE) {
 				child = produceSide.draw();
 			}
 			else if (id == -1) {
@@ -413,14 +424,12 @@ public class Editor {
 			canvasWorking.textAlign(PApplet.LEFT, PApplet.CENTER);
 			
 			String title = "INSERT";
-			if (side != null) {
-				if (side == true) {
-					title += " INLET";
-				}
-				else if (side == false) {
-					title += " OUTLET";
-				}	
+			if (direction == Laxel.Direction.INLET) {
+				title += " INLET";
 			}
+			else if (direction == Laxel.Direction.OUTLET) {
+				title += " OUTLET";
+			}	
 			
 			canvasWorking.text(title, gutter, height / 2);
 			
@@ -429,9 +438,15 @@ public class Editor {
 		
 		@Override
 		public boolean keyPressed(int key) {
-			if (side == null) {
+			if (direction == Laxel.Direction.NONE) {
 				if (produceSide.keyPressed(key)) {
-					side = produceSide.execute() == 'i';
+					char c = produceSide.execute();
+					if (c == 'i') {
+						direction = Laxel.Direction.INLET;
+					}
+					else if (c == 'o') {
+						direction = Laxel.Direction.OUTLET;
+					}
 				}
 				return false;
 			}
@@ -499,8 +514,6 @@ public class Editor {
 				produceLaxel = new DialogCreateLaxel();
 				return false;
 			}
-			//laxelNew.inlets = laxelOld.inlets;
-			//laxelNew.outlets = laxelOld.outlets;
 			point = laxelNew;
 			return true;
 		}
@@ -519,6 +532,7 @@ public class Editor {
 	private class DialogTextEntry extends EditorDialog<String> {
 		String entry = "";
 		
+		@Override
 		public boolean keyPressed(int key) {
 			boolean executeFlag = false;
 			if (key == PApplet.RETURN || key == PApplet.ENTER) {

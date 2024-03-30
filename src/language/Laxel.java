@@ -1,15 +1,31 @@
 package language;
 
-import java.util.ArrayList;
-
-public abstract class Laxel {
-	
-	public abstract void execute();
-	
+public abstract class Laxel {	
 	public Inlet[] inlets;
 	public Outlet[] outlets;
 	public String displayName = "";
+	public String tag;
 	
+	public boolean runFlag = false;
+	
+	public void clear() {
+		runFlag = false;
+	}
+	
+	public boolean execute() {
+		runFlag = true;
+		return true;
+	}
+	
+	
+	public enum Direction {
+		NONE,
+		INLET,
+		OUTLET,
+		BOTH
+	}
+	
+
 	public abstract class IONode {
 		public abstract void setTarget(Laxel laxel);
 	}
@@ -31,8 +47,11 @@ public abstract class Laxel {
 		
 		public Object get() {
 			if (target != null && connection != null) {
-				if (connection.dataType == this.dataType) {
+				if (this.dataType.isAssignableFrom(connection.dataType)) {
 					return connection.data;	
+				}
+				else {
+					return new Error(ErrorType.WRONG_TYPE);
 				}
 			}
 			return null;
@@ -45,14 +64,6 @@ public abstract class Laxel {
 	}
 	
 	
-	public enum Direction {
-		NONE,
-		INLET,
-		OUTLET,
-		BOTH
-	}
-	
-	
 	@SuppressWarnings("rawtypes")
 	public class Outlet extends IONode {
 		public Laxel target;
@@ -61,7 +72,7 @@ public abstract class Laxel {
 		
 		public Class dataType;
 		
-		public Object data;
+		public Object data = null;
 		
 		public Outlet(String name, Class dataType) {
 			this.dataType = dataType;

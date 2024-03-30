@@ -7,10 +7,4 @@ public class NOOP extends Laxel {
 		this.inlets = new Inlet[0];
 		this.outlets = new Outlet[0];
 	}
-
-	@Override
-	public void execute() {
-		// TODO Auto-generated method stub
-		
-	}
 }

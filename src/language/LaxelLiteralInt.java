@@ -1,9 +1,9 @@
 package language;
 
-public class LiteralInt extends Laxel {
+public class LaxelLiteralInt extends Laxel {
 	public int data;
 	
-	public LiteralInt(int input) {
+	public LaxelLiteralInt(int input) {
 		this.data = input;
 		
 		this.displayName = "INT " + this.data;
@@ -14,7 +14,15 @@ public class LiteralInt extends Laxel {
 		outlets[0] = new Outlet("i", Integer.class);
 	}
 	
-	public void execute() {
+	public boolean execute() {
 		outlets[0].set(data);
+		super.execute();
+		return true;
+	}
+
+	@Override
+	public void clear() {
+		outlets[0].set(null);
+		super.clear();
 	}
 }

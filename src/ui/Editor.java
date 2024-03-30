@@ -4,13 +4,13 @@ import language.*;
 import processing.core.PApplet;
 import processing.core.PGraphics;
 import processing.core.PImage;
-import processing.core.PVector;
+import processing.data.JSONArray;
+import processing.data.JSONObject;
 import vm.VM;
 
 import static ui.Bridge.p;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 
 public class Editor {
@@ -25,6 +25,7 @@ public class Editor {
 	int ioOffset = 50;
 	
 	public Laxel point;
+	public Laxel head;
 	
 	private EditorDialog<?> dialogs = null;
 	
@@ -57,6 +58,19 @@ public class Editor {
 		renderLaxel(laxelTree);
 		
 		canvas.endDraw();
+	}
+	
+	public void save() {
+		JSONObject output = new JSONObject();
+		output.setString("name", "unnamed");
+		
+		
+		VM.clearLaxel(head);
+		JSONArray laxelArray = head.toJSON(new JSONArray());
+		
+		output.setJSONArray("laxels", laxelArray);
+		
+		p.saveJSONObject(output, "output/output.json");
 	}
 	
 	private class LaxelDisplay {
@@ -238,18 +252,19 @@ public class Editor {
 		}
 		
 		else if (key == 'e') {
-			VM vm = new VM();
-			vm.execute(point);
+			VM.execute(head);
 		}
 		
 		else if (key == 'i') {
 			dialogs = new DialogInsert(point);
 		}
 		
-		
-		
 		else if (key == 'r') {
 			dialogs = new DialogReplace(point);
+		}
+		
+		else if (key == 's') {
+			save();
 		}
 		
 		if (dialogs != null && dialogs.complete) {
@@ -513,6 +528,9 @@ public class Editor {
 			if (laxelNew == null) {
 				produceLaxel = new DialogCreateLaxel();
 				return false;
+			}
+			if (head == point) {
+				head = laxelNew;
 			}
 			point = laxelNew;
 			return true;

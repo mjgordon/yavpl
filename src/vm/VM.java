@@ -3,15 +3,13 @@ package vm;
 import language.Laxel;
 
 public class VM {
-	public void execute(Laxel laxel) {
+	public static void execute(Laxel laxel) {
 		clearLaxel(laxel);
-		
 		runLaxel(laxel);
-		
 	}
 	
 	
-	private void runLaxel(Laxel laxel) {
+	public static void runLaxel(Laxel laxel) {
 		for (Laxel.Inlet inlet : laxel.inlets) {
 			if (inlet.target != null && inlet.target.runFlag == false) {
 				runLaxel(inlet.target);
@@ -22,14 +20,13 @@ public class VM {
 	}
 	
 	
-	private void clearLaxel(Laxel laxel) {
+	public static void clearLaxel(Laxel laxel) {
 		laxel.clear();
 		
 		for (Laxel.Inlet inlet : laxel.inlets) {
 			if (inlet.target != null) {
 				clearLaxel(inlet.target);	
 			}
-			
 		}
 	}
 }

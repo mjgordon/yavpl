@@ -29,7 +29,8 @@ public class YAVPL extends PApplet {
 		
 		editor = new Editor(g_editor);
 		
-		editor.point = new NOOP();
+		editor.head = new NOOP();
+		editor.point = editor.head;
 	}
 	
 	

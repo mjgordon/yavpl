@@ -26,14 +26,22 @@ public class LaxelLiteralInt extends Laxel {
 	}
 	
 	public boolean execute() {
-		outlets[0].set(data);
+		outlets[0].data = data;
 		super.execute();
 		return true;
 	}
-
+	
+	
 	@Override
-	public void clear() {
-		outlets[0].set(null);
-		super.clear();
+	public String[] getEditable() {
+		return new String[] {"int"};
 	}
+	
+	
+	@Override
+	public void editValue(int i) {
+		this.data = i;
+		this.displayName = "INT " + this.data;
+	}
+	
 }

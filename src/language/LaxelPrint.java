@@ -1,6 +1,7 @@
 package language;
 
 public class LaxelPrint extends Laxel {
+	
 	public LaxelPrint() {
 		displayName = "print";
 		
@@ -10,21 +11,18 @@ public class LaxelPrint extends Laxel {
 		inlets[0] = new Inlet("s", String.class, 0);
 	}
 
+	
 	@Override
 	public boolean execute() {
-		Object i0 = inlets[0].get();
+		Object i0 = inlets[0].getData();
 		if (i0 instanceof Error) {
 			return false;
 		}
 		else {
-			String s = (String)i0;
-			
-			System.out.println(s);
-			
-			super.execute();
-			
+			String s = (String)i0;			
+			System.out.println(s);			
+			super.execute();			
 			return true;
 		}
-		
 	}
 }

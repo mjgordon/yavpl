@@ -158,19 +158,9 @@ public class Editor {
 	}
 	
 	
-	private class LaxelDisplay {
-		public Laxel laxel;
-		public int width = 0;
-		public int height = 0;
-		
-		public float inletTextWidth;
-		public float outletTextWidth;
-		
-		public ArrayList<LaxelDisplay> inlets = new ArrayList<LaxelDisplay>();
-		public ArrayList<LaxelDisplay> outlets = new ArrayList<LaxelDisplay>();
-		
-		public LaxelDisplay(Laxel laxel) {
-			this.laxel = laxel;
+	public void edit(Laxel laxel) {
+		if (laxel instanceof LaxelLiteralInt) {
+			dialogs = new DialogEditInt(laxel);
 		}
 	}
 	
@@ -349,10 +339,12 @@ public class Editor {
 			dialogs = new DialogMove(Laxel.Direction.OUTLET);
 		}
 		
+		
 		else if (key == 'e') {
-			VM.execute(head);
+			edit(point);
 		}
 		
+
 		else if (key == 'i') {
 			dialogs = new DialogInsert(point);
 		}
@@ -369,8 +361,29 @@ public class Editor {
 			save();
 		}
 		
+		else if (key == 'x') {
+			VM.execute(head);
+		}
+		
 		if (dialogs != null && dialogs.complete) {
 			dialogs = null;
+		}
+	}
+	
+	
+	private class LaxelDisplay {
+		public Laxel laxel;
+		public int width = 0;
+		public int height = 0;
+		
+		public float inletTextWidth;
+		public float outletTextWidth;
+		
+		public ArrayList<LaxelDisplay> inlets = new ArrayList<LaxelDisplay>();
+		public ArrayList<LaxelDisplay> outlets = new ArrayList<LaxelDisplay>();
+		
+		public LaxelDisplay(Laxel laxel) {
+			this.laxel = laxel;
 		}
 	}
 	
@@ -470,7 +483,6 @@ public class Editor {
 			canvasWorking.text("LAXEL", gutter, height / 2);
 			
 			return child;
-			
 		}
 		
 		@Override
@@ -480,6 +492,64 @@ public class Editor {
 			}
 			return false;
 		}	
+	}
+	
+	
+	private class DialogEditInt extends EditorDialog<Boolean> {
+		
+		private EditorDialog<String> produceInt;
+		
+		private Laxel parent;
+		
+		int value = 0;
+		
+		public DialogEditInt(Laxel parent) {
+			produceInt = new DialogTextEntry();
+			this.parent = parent;
+		}
+
+		@Override
+		public Boolean execute() {
+			parent.editValue(value);
+			return true;
+		}
+
+		@Override
+		public PImage drawLocal() {
+			PImage child = produceInt.draw();
+			
+			if (child != null) {
+				 width += child.width + gutter;
+				 height = Math.max(child.height + (gutter * 2), height);
+			}
+			
+			canvasWorking.background(255);
+			
+			canvasWorking.fill(0);
+			canvasWorking.textAlign(PApplet.LEFT, PApplet.CENTER);
+			canvasWorking.text("EDIT", gutter, height / 2);
+			
+			return child;
+		}
+		
+		@Override
+		public boolean keyPressed(int key) {
+			if (produceInt.keyPressed(key)) {
+				String s = produceInt.execute();
+				try {
+					int i = Integer.valueOf(s);	
+					value = i;
+					execute();
+					return true;
+				}
+				catch (NumberFormatException e) {
+					produceInt = new DialogTextEntry();
+				}
+				
+			}
+			return false;
+		}
+		
 	}
 	
 	

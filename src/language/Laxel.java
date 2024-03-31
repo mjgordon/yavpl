@@ -17,16 +17,33 @@ public abstract class Laxel {
 	public boolean saveFlag = false;
 	public boolean loadFlag = false;
 	
+	
 	public void clear() {
 		runFlag = false;
 		saveFlag = false;
 		loadFlag = false;
+		
+		for (Outlet outlet : outlets) {
+			outlet.data = null;
+		}
 	}
+	
 	
 	public boolean execute() {
 		runFlag = true;
 		return true;
 	}
+	
+	
+	public String[] getEditable() {
+		return new String[0];
+	}
+	
+	
+	public void editValue(int i) {
+		
+	}
+	
 	
 	public JSONArray toJSON(JSONArray accumulator) {
 		
@@ -84,12 +101,8 @@ public abstract class Laxel {
 	}
 	
 
+	@SuppressWarnings("rawtypes")
 	public abstract class IONode {
-		public abstract void setTarget(Laxel laxel);
-	}
-	
-	@SuppressWarnings({"rawtypes", "unchecked"})
-	public class Inlet extends IONode {
 		public int id;
 		
 		public String name;
@@ -98,15 +111,24 @@ public abstract class Laxel {
 		public Laxel target;
 		public int connectionId;
 		
+		public void setTarget(Laxel laxel) {
+			target = laxel;
+			connectionId = 0;
+		}
+	}
+	
+	@SuppressWarnings({"rawtypes", "unchecked"})
+	public class Inlet extends IONode {
+		
 		public Inlet(String name, Class dataType, int id) {
+			this.id = id;
+			this.name = name;
+			this.dataType = dataType;
 			target = null;
 			connectionId = -1;
-			this.dataType = dataType;
-			this.name = name;
-			this.id = id;
 		}
 		
-		public Object get() {
+		public Object getData() {
 			if (target != null) {
 				if (this.dataType.isAssignableFrom(target.outlets[connectionId].dataType)) {
 					return target.outlets[connectionId].data;	
@@ -117,42 +139,20 @@ public abstract class Laxel {
 			}
 			return null;
 		}
-		
-		public void setTarget(Laxel laxel) {
-			target = laxel;
-			connectionId = 0;
-		}
 	}
 	
 	
 	@SuppressWarnings("rawtypes")
 	public class Outlet extends IONode {
-		public int id;
-		
-		public String name;
-		public Class dataType;
-		
-		public Laxel target;
-		public int connectionId;
-		
+
 		public Object data = null;
 		
 		public Outlet(String name, Class dataType, int id) {
-			this.dataType = dataType;
+			this.id = id;
 			this.name  = name;
+			this.dataType = dataType;
 			target = null;
 			connectionId = -1;
-			this.id = id;
 		}
-		
-		public void set(Object data) {
-			this.data = data;
-		}
-		
-		public void setTarget(Laxel laxel) {
-			target = laxel;
-			connectionId = 0;
-		}
-		
 	}
 }

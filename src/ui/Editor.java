@@ -10,8 +10,12 @@ import vm.VM;
 
 import static ui.Bridge.p;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.UUID;
 
 public class Editor {
 	
@@ -60,6 +64,7 @@ public class Editor {
 		canvas.endDraw();
 	}
 	
+	
 	public void save() {
 		JSONObject output = new JSONObject();
 		output.setString("name", "unnamed");
@@ -70,8 +75,78 @@ public class Editor {
 		
 		output.setJSONArray("laxels", laxelArray);
 		
+		output.setString("head",head.uuid.toString());
+		
 		p.saveJSONObject(output, "output/output.json");
 	}
+	
+	
+	public void load() {
+		JSONObject json = p.loadJSONObject("output/output.json");
+		String name = json.getString("name");
+		JSONArray jsonLaxels = json.getJSONArray("laxels");
+		UUID headUUID = UUID.fromString(json.getString("head"));
+		
+		HashMap<UUID, Laxel> laxels = new HashMap<UUID, Laxel>();
+		HashMap<UUID, JSONObject> jsonMap = new HashMap<UUID, JSONObject>();
+		
+		for (int i = 0; i < jsonLaxels.size(); i++) {
+			JSONObject jsonLaxel = jsonLaxels.getJSONObject(i);
+			UUID uuid = UUID.fromString(jsonLaxel.getString("id"));
+			try {
+				Class<?> c = Class.forName(jsonLaxel.getString("type"));
+				Constructor<?> constructor = c.getConstructor();
+				
+				Object object = constructor.newInstance();
+				Laxel laxel = (Laxel) object;
+				laxel.uuid = uuid;
+				laxels.put(uuid, laxel);
+				jsonMap.put(uuid, jsonLaxel);
+			} 
+			// lol
+			catch (ClassNotFoundException | NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+				e.printStackTrace();
+			} 
+
+		}
+		
+		head = laxels.get(headUUID);
+		point = head;
+		
+		loadConnections(head, jsonMap,laxels);
+	}
+	
+	public void loadConnections(Laxel laxel,HashMap<UUID, JSONObject> jsonMap, HashMap<UUID, Laxel> laxels) {
+		
+		if (laxel.loadFlag) {
+			return;
+		}
+		
+		JSONObject laxelJSON = jsonMap.get(laxel.uuid);
+		
+		JSONArray inletArray = laxelJSON.getJSONArray("inlets");
+		for(int i = 0; i < inletArray.size(); i++) {
+			JSONObject inletJSON = inletArray.getJSONObject(i);
+			Laxel target = laxels.get(UUID.fromString(inletJSON.getString("targetId")));
+			int connectionId = inletJSON.getInt("connectionId");
+			laxel.inlets[i].target = target;
+			laxel.inlets[i].connectionId = connectionId;
+			
+			loadConnections(target, jsonMap, laxels);
+		}
+		
+		JSONArray outletArray = laxelJSON.getJSONArray("outlets");
+		for (int i = 0; i < outletArray.size(); i++) {
+			JSONObject outletJSON = outletArray.getJSONObject(i);
+			UUID targetId = UUID.fromString(outletJSON.getString("targetId"));
+			int connectionId = outletJSON.getInt("connectionId");
+			laxel.outlets[i].target = laxels.get(targetId);
+			laxel.outlets[i].connectionId = connectionId;
+		}
+		
+		laxel.loadFlag = true;
+	}
+	
 	
 	private class LaxelDisplay {
 		public Laxel laxel;
@@ -236,6 +311,11 @@ public class Editor {
 	
 	
 	public void keyPressed(int key) {
+		if (key == p.ESC) {
+			p.key = 0;
+			dialogs = null;
+		}
+		
 		if (dialogs != null) {
 			if (dialogs.keyPressed(key)) {
 				dialogs = null;
@@ -257,6 +337,10 @@ public class Editor {
 		
 		else if (key == 'i') {
 			dialogs = new DialogInsert(point);
+		}
+		
+		else if (key == 'l') {
+			load();
 		}
 		
 		else if (key == 'r') {

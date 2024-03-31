@@ -11,9 +11,9 @@ public class LaxelFormat extends Laxel {
 		this.inlets = new Inlet[1];
 		this.outlets=  new Outlet[1];
 		
-		this.inlets[0] = new Inlet("i", Object.class);
+		this.inlets[0] = new Inlet("i", Object.class, 0);
 		
-		this.outlets[0] = new Outlet("s", String.class);
+		this.outlets[0] = new Outlet("s", String.class, 0);
 	}
 	
 	public boolean execute() {

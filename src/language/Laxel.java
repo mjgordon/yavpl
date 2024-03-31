@@ -15,10 +15,12 @@ public abstract class Laxel {
 	
 	public boolean runFlag = false;
 	public boolean saveFlag = false;
+	public boolean loadFlag = false;
 	
 	public void clear() {
 		runFlag = false;
 		saveFlag = false;
+		loadFlag = false;
 	}
 	
 	public boolean execute() {
@@ -41,10 +43,13 @@ public abstract class Laxel {
 		JSONArray inletArray = new JSONArray();
 		for (Inlet inlet : inlets) {
 			if (inlet.target != null) {
-				inletArray.append(inlet.target.uuid.toString());
+				JSONObject inletJSON = new JSONObject();
+				inletJSON.setString("targetId", inlet.target.uuid.toString());
+				inletJSON.setInt("connectionId", inlet.connectionId);
+				inletArray.append(inletJSON);
 			}
 			else {
-				inletArray.append("");
+				inletArray.append(new JSONObject());
 			}
 		}
 		self.setJSONArray("inlets", inletArray);
@@ -52,10 +57,13 @@ public abstract class Laxel {
 		JSONArray outletArray = new JSONArray();
 		for (Outlet outlet : outlets) {
 			if (outlet.target != null) {
-				outletArray.append(outlet.target.uuid.toString());
+				JSONObject outletJSON = new JSONObject();
+				outletJSON.setString("targetId", outlet.target.uuid.toString());
+				outletJSON.setInt("connectionId", outlet.connectionId);
+				outletArray.append(outletJSON);
 			}
 			else {
-				outletArray.append("");
+				outletArray.append(new JSONObject());
 			}
 		}
 		self.setJSONArray("outlets", outletArray);
@@ -82,23 +90,26 @@ public abstract class Laxel {
 	
 	@SuppressWarnings({"rawtypes", "unchecked"})
 	public class Inlet extends IONode {
-		public Laxel target;
-		public Outlet connection;
-		public String name;
+		public int id;
 		
+		public String name;
 		public Class dataType;
 		
-		public Inlet(String name, Class dataType) {
+		public Laxel target;
+		public int connectionId;
+		
+		public Inlet(String name, Class dataType, int id) {
 			target = null;
-			connection = null;
+			connectionId = -1;
 			this.dataType = dataType;
 			this.name = name;
+			this.id = id;
 		}
 		
 		public Object get() {
-			if (target != null && connection != null) {
-				if (this.dataType.isAssignableFrom(connection.dataType)) {
-					return connection.data;	
+			if (target != null) {
+				if (this.dataType.isAssignableFrom(target.outlets[connectionId].dataType)) {
+					return target.outlets[connectionId].data;	
 				}
 				else {
 					return new Error(ErrorType.WRONG_TYPE);
@@ -109,26 +120,29 @@ public abstract class Laxel {
 		
 		public void setTarget(Laxel laxel) {
 			target = laxel;
-			connection = laxel.outlets[0];
+			connectionId = 0;
 		}
 	}
 	
 	
 	@SuppressWarnings("rawtypes")
 	public class Outlet extends IONode {
-		public Laxel target;
-		public Inlet connection;
-		public String name;
+		public int id;
 		
+		public String name;
 		public Class dataType;
+		
+		public Laxel target;
+		public int connectionId;
 		
 		public Object data = null;
 		
-		public Outlet(String name, Class dataType) {
+		public Outlet(String name, Class dataType, int id) {
 			this.dataType = dataType;
 			this.name  = name;
 			target = null;
-			connection = null;
+			connectionId = -1;
+			this.id = id;
 		}
 		
 		public void set(Object data) {
@@ -137,7 +151,7 @@ public abstract class Laxel {
 		
 		public void setTarget(Laxel laxel) {
 			target = laxel;
-			connection = laxel.inlets[0];
+			connectionId = 0;
 		}
 		
 	}

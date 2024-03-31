@@ -7,7 +7,7 @@ public class LaxelPrint extends Laxel {
 		inlets = new Inlet[1];
 		outlets = new Outlet[0];
 	
-		inlets[0] = new Inlet("input", String.class, 0);
+		inlets[0] = new Inlet("s", String.class, 0);
 	}
 
 	@Override

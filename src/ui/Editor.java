@@ -13,6 +13,7 @@ import static ui.Bridge.p;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.UUID;
@@ -81,6 +82,9 @@ public class Editor {
 	}
 	
 	
+	/**
+	 * Load a script from file into the editor head
+	 */
 	public void load() {
 		JSONObject json = p.loadJSONObject("output/output.json");
 		String name = json.getString("name");
@@ -116,8 +120,14 @@ public class Editor {
 		loadConnections(head, jsonMap,laxels);
 	}
 	
+	
+	/**
+	 * After all Laxels objects have been created during loading, loadConnections is called recursively from head to connect all inlets and outlets
+	 * @param laxel
+	 * @param jsonMap
+	 * @param laxels
+	 */
 	public void loadConnections(Laxel laxel,HashMap<UUID, JSONObject> jsonMap, HashMap<UUID, Laxel> laxels) {
-		
 		if (laxel.loadFlag) {
 			return;
 		}
@@ -169,6 +179,14 @@ public class Editor {
 		return getTree(laxel, Laxel.Direction.BOTH, 0);
 	}
 	
+	
+	/**
+	 * Setup function for rendering. Given the laxel point, returns a tree of LaxelDisplay objects with sizing information
+	 * @param laxel
+	 * @param direction
+	 * @param depth
+	 * @return
+	 */
 	public LaxelDisplay getTree(Laxel laxel, Laxel.Direction direction, int depth) {
 		int maxDepth = 3;
 		
@@ -176,7 +194,6 @@ public class Editor {
 		
 		int greatestInletWidth = 0;
 		int greatestOutletWidth = 0;
-		
 		
 		for (Laxel.Inlet inlet : laxel.inlets) {
 			ld.inletTextWidth = Math.max(ld.inletTextWidth, Math.max(p.textWidth(inlet.name),p.textWidth(inlet.dataType.getSimpleName())));
@@ -188,13 +205,10 @@ public class Editor {
 				else {
 					LaxelDisplay branch = getTree(inlet.target, Laxel.Direction.INLET, depth + 1);
 					ld.inlets.add(branch);
-					greatestInletWidth = Math.max(greatestInletWidth, branch.width);
-					
+					greatestInletWidth = Math.max(greatestInletWidth, branch.width);		
 				}
 			}
-			
 		}	
-		
 		
 		for (Laxel.Outlet outlet : laxel.outlets) {
 			ld.outletTextWidth = Math.max(ld.outletTextWidth, Math.max(p.textWidth(outlet.name),p.textWidth(outlet.dataType.getSimpleName())));
@@ -211,7 +225,6 @@ public class Editor {
 			}
 		}
 		
-		
 		int maxIOCount = Math.max(laxel.inlets.length, laxel.outlets.length);
 		ld.height = Math.max(defaultHeight, (ioOffset * maxIOCount) + (gutter * 2));
 		if (direction == Laxel.Direction.INLET || direction == Laxel.Direction.BOTH) {
@@ -222,6 +235,7 @@ public class Editor {
 				}
 			}	
 		}
+		
 		if (direction == Laxel.Direction.OUTLET || direction == Laxel.Direction.BOTH) {
 			for (LaxelDisplay l : ld.outlets) {
 				if (l != null) {
@@ -233,18 +247,22 @@ public class Editor {
 		
 		ld.width = (int)(ld.inletTextWidth + ld.outletTextWidth + p.textWidth(laxel.displayName) + (gutter * 4));
 		
-		
 		return ld;
 	}
+	
 	
 	public void renderLaxel(LaxelDisplay ld) {
 		renderLaxel(ld, Laxel.Direction.BOTH);
 	}
 	
 	
+	/**
+	 * Renders a single laxel box, and depending on direction, all of its inlets or outlets recursively
+	 * @param ld
+	 * @param direction
+	 */
 	public void renderLaxel(LaxelDisplay ld, Laxel.Direction direction) {
 		Laxel laxel = ld.laxel;
-		
 		
 		canvas.strokeWeight(laxel == point ? 2 : 1);
 		
@@ -311,8 +329,8 @@ public class Editor {
 	
 	
 	public void keyPressed(int key) {
-		if (key == p.ESC) {
-			p.key = 0;
+		if (key == PApplet.ESC) {
+			p.key = 0; // Cancels the built in quit action on ESC
 			dialogs = null;
 		}
 		
@@ -354,12 +372,14 @@ public class Editor {
 		if (dialogs != null && dialogs.complete) {
 			dialogs = null;
 		}
-		
-		
-		
 	}
 	
 	
+	/**
+	 * Base UI unit. T indicates the expected return type from the dialogs action
+	 *
+	 * @param <T>
+	 */
 	private abstract class EditorDialog<T> {	
 		public abstract T execute();
 		
@@ -469,20 +489,73 @@ public class Editor {
 		private Laxel newLaxel = null;
 		
 		private EditorDialog<Character> produceSide;
-		private EditorDialog<String> produceInletId;
+		private EditorDialog<Character> produceIOId;
 		private EditorDialog<Laxel> produceLaxel;
 		
 		Laxel.Direction direction = Laxel.Direction.NONE;
 		int id = -1;
 		
+		int hkState;
+		
 		public DialogInsert(Laxel parent) {
-			char[] hotkeys = {'i','o'};
-			produceSide = new DialogHotkey(hotkeys);
-			produceInletId = new DialogTextEntry();
-			produceLaxel = new DialogCreateLaxel();
-			
 			this.parent = parent;
+
+			hkState = 0;
+			if (parent.inlets.length > 0) {
+				hkState += 1;
+			}
+			if (parent.outlets.length > 0) {
+				hkState += 2;
+			}
+			
+			// No IO, can't insert
+			if (hkState == 0) {
+				complete = true;
+			}
+			else if (hkState == 1) {
+				direction = Laxel.Direction.INLET;
+			}
+			// Only outlets
+			else if (hkState == 2) {
+				direction = Laxel.Direction.OUTLET;
+			}
+			// Inlets and outlets
+			else if (hkState == 3) {
+				produceSide = new DialogHotkey(new char[]{'i','o'});	
+			}
+			
+			setIOId();
+			
+			produceLaxel = new DialogCreateLaxel();
 		}
+		
+		private void setIOId() {
+			char[] numberKeys = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+			if (hkState == 1) {
+				int length = parent.inlets.length;
+				if (length == 1) {
+					id = 0;
+				}
+				produceIOId = new DialogHotkey(Arrays.copyOfRange(numberKeys, 0, length));
+			}
+			// Only outlets
+			else if (hkState == 2) {
+				int length = parent.outlets.length;
+				if (length == 1) {
+					id = 0;
+				}
+				produceIOId = new DialogHotkey(Arrays.copyOfRange(numberKeys, 0, length));
+			}
+			// Inlets and outlets
+			else if (hkState == 3) {
+				int length = Math.max(parent.inlets.length, parent.outlets.length);
+				if (length == 1) {
+					id = 0;
+				}
+				produceIOId = new DialogHotkey(Arrays.copyOfRange(numberKeys, 0, length));
+			}
+		}
+		
 
 		@Override
 		public Boolean execute() {
@@ -506,7 +579,7 @@ public class Editor {
 				child = produceSide.draw();
 			}
 			else if (id == -1) {
-				child = produceInletId.draw();
+				child = produceIOId.draw();
 			}
 			else {
 				child = produceLaxel.draw();
@@ -550,13 +623,13 @@ public class Editor {
 				return false;
 			}
 			else if (id == -1) {
-				if (produceInletId.keyPressed(key)) {
-					String s = produceInletId.execute();
+				if (produceIOId.keyPressed(key)) {
+					char c = produceIOId.execute();
 					try {
-						id = Integer.valueOf(s);
+						id = Integer.valueOf(c + "");
 					}
 					catch (NumberFormatException e) {
-						produceInletId = new DialogTextEntry();
+						setIOId();
 					}
 				}
 				return false;
@@ -570,7 +643,6 @@ public class Editor {
 				return false;
 			}
 		}
-		
 	}
 	
 	

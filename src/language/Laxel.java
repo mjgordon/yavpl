@@ -1,5 +1,7 @@
 package language;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.UUID;
 
 import processing.data.JSONArray;
@@ -12,6 +14,8 @@ public abstract class Laxel {
 	public String tag;
 	
 	public UUID uuid = UUID.randomUUID();
+	
+	public FoldState foldState = FoldState.OPEN;
 	
 	public boolean runFlag = false;
 	public boolean saveFlag = false;
@@ -45,6 +49,11 @@ public abstract class Laxel {
 	}
 	
 	
+	public void cycleFoldState() {
+		this.foldState = this.foldState.getNext();
+	}
+	
+	
 	public JSONArray toJSON(JSONArray accumulator) {
 		
 		for (Laxel.Inlet inlet : inlets) {
@@ -56,6 +65,7 @@ public abstract class Laxel {
 		JSONObject self = new JSONObject();
 		self.setString("id", uuid.toString());
 		self.setString("type", this.getClass().getCanonicalName());
+		self.setString("foldState",foldState.toString());
 		
 		JSONArray inletArray = new JSONArray();
 		for (Inlet inlet : inlets) {
@@ -93,11 +103,48 @@ public abstract class Laxel {
 	}
 	
 	
+	public static Laxel fromJSON(JSONObject jsonLaxel) {
+		Laxel laxel = null;
+		UUID uuid = UUID.fromString(jsonLaxel.getString("id"));
+		try {
+			Class<?> c = Class.forName(jsonLaxel.getString("type"));
+			Constructor<?> constructor = c.getConstructor();
+			
+			Object object = constructor.newInstance();
+			laxel = (Laxel) object;
+			laxel.uuid = uuid;
+			laxel.foldState = FoldState.valueOf(jsonLaxel.getString("foldState"));
+		} 
+		// lol
+		catch (ClassNotFoundException | NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+			e.printStackTrace();
+		} 
+		
+		return laxel;
+	}
+	
+	
 	public enum Direction {
 		NONE,
 		INLET,
 		OUTLET,
 		BOTH
+	}
+	
+	public enum FoldState {
+		OPEN(1),
+		MID(2), 
+		FOLDED(0);
+		
+		private int next;
+		
+		private FoldState(int next) {
+			this.next = next;
+		}
+		
+		public FoldState getNext() {
+			return FoldState.values()[next];
+		}
 	}
 	
 

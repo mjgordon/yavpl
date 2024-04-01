@@ -10,8 +10,6 @@ import vm.VM;
 
 import static ui.Bridge.p;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -33,6 +31,8 @@ public class Editor {
 	public Laxel head;
 	
 	private EditorDialog<?> dialogs = null;
+	
+	private int textHeight = 20;
 	
 	public Editor(PGraphics canvas) {
 		this.canvas = canvas;
@@ -96,22 +96,9 @@ public class Editor {
 		
 		for (int i = 0; i < jsonLaxels.size(); i++) {
 			JSONObject jsonLaxel = jsonLaxels.getJSONObject(i);
-			UUID uuid = UUID.fromString(jsonLaxel.getString("id"));
-			try {
-				Class<?> c = Class.forName(jsonLaxel.getString("type"));
-				Constructor<?> constructor = c.getConstructor();
-				
-				Object object = constructor.newInstance();
-				Laxel laxel = (Laxel) object;
-				laxel.uuid = uuid;
-				laxels.put(uuid, laxel);
-				jsonMap.put(uuid, jsonLaxel);
-			} 
-			// lol
-			catch (ClassNotFoundException | NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-				e.printStackTrace();
-			} 
-
+			Laxel laxel = Laxel.fromJSON(jsonLaxel);
+			laxels.put(laxel.uuid, laxel);
+			jsonMap.put(laxel.uuid, jsonLaxel);
 		}
 		
 		head = laxels.get(headUUID);
@@ -186,7 +173,12 @@ public class Editor {
 		int greatestOutletWidth = 0;
 		
 		for (Laxel.Inlet inlet : laxel.inlets) {
-			ld.inletTextWidth = Math.max(ld.inletTextWidth, Math.max(p.textWidth(inlet.name),p.textWidth(inlet.dataType.getSimpleName())));
+			if (laxel.foldState == Laxel.FoldState.OPEN) {
+				ld.inletTextWidth = Math.max(ld.inletTextWidth, Math.max(p.textWidth(inlet.name),p.textWidth(inlet.dataType.getSimpleName())));	
+			}
+			else if (laxel.foldState == Laxel.FoldState.MID) {
+				ld.inletTextWidth = Math.max(ld.inletTextWidth, p.textWidth(inlet.name));	
+			}
 			
 			if (direction == Laxel.Direction.INLET || direction == Laxel.Direction.BOTH) {
 				if (inlet.target == null || depth >= maxDepth) {
@@ -201,7 +193,12 @@ public class Editor {
 		}	
 		
 		for (Laxel.Outlet outlet : laxel.outlets) {
-			ld.outletTextWidth = Math.max(ld.outletTextWidth, Math.max(p.textWidth(outlet.name),p.textWidth(outlet.dataType.getSimpleName())));
+			if (laxel.foldState == Laxel.FoldState.OPEN) {
+				ld.outletTextWidth = Math.max(ld.outletTextWidth, Math.max(p.textWidth(outlet.name),p.textWidth(outlet.dataType.getSimpleName())));
+			}
+			else if (laxel.foldState == Laxel.FoldState.MID) {
+				ld.outletTextWidth = Math.max(ld.outletTextWidth, p.textWidth(outlet.name));
+			}
 			
 			if (direction == Laxel.Direction.OUTLET || direction == Laxel.Direction.BOTH) {
 				if (outlet.target == null || depth >= maxDepth) {
@@ -235,7 +232,20 @@ public class Editor {
 			}
 		}
 		
-		ld.width = (int)(ld.inletTextWidth + ld.outletTextWidth + p.textWidth(laxel.displayName) + (gutter * 4));
+		
+		if (laxel.foldState == Laxel.FoldState.OPEN ) {
+			ld.width = (int)(ld.inletTextWidth + ld.outletTextWidth + p.textWidth(laxel.displayName) + (gutter * 4));	
+		}
+		
+		else if (laxel.foldState == Laxel.FoldState.MID) {
+			ld.width = (int)(ld.inletTextWidth + ld.outletTextWidth + textHeight + (gutter * 4));
+		}
+		
+		else if (laxel.foldState == Laxel.FoldState.FOLDED) {
+			ld.width = (int)(textHeight + (gutter * 2));
+		}
+		
+		
 		
 		return ld;
 	}
@@ -261,8 +271,23 @@ public class Editor {
 		canvas.rect(0,0, ld.width, ld.height);
 		canvas.noStroke();
 		canvas.fill(0);
+		
 		canvas.textAlign(PApplet.LEFT, PApplet.CENTER);
-		canvas.text(laxel.displayName, gutter + ld.inletTextWidth + gutter, ld.height / 2);
+		if (ld.laxel.foldState == Laxel.FoldState.OPEN) {
+			canvas.text(laxel.displayName, gutter + ld.inletTextWidth + gutter, ld.height / 2);	
+		}
+		else if (ld.laxel.foldState == Laxel.FoldState.MID) {
+			canvas.pushMatrix();
+			canvas.rotate(-PApplet.PI/2);
+			canvas.text(laxel.displayName,-ld.height / 2 - p.textWidth(laxel.displayName) / 2, gutter + ld.inletTextWidth + gutter + (textHeight / 2));
+			canvas.popMatrix();
+		}
+		else if (ld.laxel.foldState == Laxel.FoldState.FOLDED) {
+			canvas.pushMatrix();
+			canvas.rotate(-PApplet.PI/2);
+			canvas.text(laxel.displayName, -ld.height / 2 - p.textWidth(laxel.displayName) / 2, gutter + (textHeight / 2));
+			canvas.popMatrix();
+		}
 		
 		int iy = 0;
 		for (int i = 0; i < laxel.inlets.length; i++) {
@@ -275,8 +300,14 @@ public class Editor {
 			canvas.fill(0);
 			canvas.noStroke();
 			canvas.textAlign(PApplet.LEFT, PApplet.CENTER);
-			canvas.text(inlet.name, gutter, y - 10);
-			canvas.text(inlet.dataType.getSimpleName(), gutter, y + 10);
+			
+			if (laxel.foldState == Laxel.FoldState.OPEN) {
+				canvas.text(inlet.dataType.getSimpleName(), gutter, y + 10);
+				canvas.text(inlet.name, gutter, y - 10);
+			}
+			else if (laxel.foldState == Laxel.FoldState.MID) {
+				canvas.text(inlet.name, gutter, y);
+			}
 			
 			if (direction == Laxel.Direction.INLET || direction == Laxel.Direction.BOTH) {	
 				LaxelDisplay ldInlet = ld.inlets.get(i);
@@ -301,8 +332,15 @@ public class Editor {
 			canvas.fill(0);
 			canvas.noStroke();
 			canvas.textAlign(PApplet.RIGHT, PApplet.CENTER);
-			canvas.text(outlet.name, ld.width - gutter, y - 10);
-			canvas.text(outlet.dataType.getSimpleName(), ld.width - gutter, y + 10);
+			
+			if (laxel.foldState == Laxel.FoldState.OPEN) {
+				canvas.text(outlet.dataType.getSimpleName(), ld.width - gutter, y + 10);
+				canvas.text(outlet.name, ld.width - gutter, y - 10);
+			}
+			else if (laxel.foldState == Laxel.FoldState.MID) {
+				canvas.text(outlet.name, ld.width - gutter, y);
+			}
+			
 			
 			if (direction == Laxel.Direction.OUTLET || direction == Laxel.Direction.BOTH) {	
 				LaxelDisplay ldOutlet = ld.outlets.get(i);
@@ -342,6 +380,10 @@ public class Editor {
 		
 		else if (key == 'e') {
 			edit(point);
+		}
+		
+		else if (key == 'f') {
+			point.cycleFoldState();
 		}
 		
 

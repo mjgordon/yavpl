@@ -48,6 +48,15 @@ public abstract class Laxel {
 		
 	}
 	
+	public Object[] getDataArray() {
+		return new Object[0];
+	}
+	
+	
+	public void setDataArray(String[] input) {
+		
+	}
+	
 	
 	public void cycleFoldState() {
 		this.foldState = this.foldState.getNext();
@@ -66,6 +75,12 @@ public abstract class Laxel {
 		self.setString("id", uuid.toString());
 		self.setString("type", this.getClass().getCanonicalName());
 		self.setString("foldState",foldState.toString());
+		
+		JSONArray dataArray = new JSONArray();
+		for (Object o : getDataArray()) {
+			dataArray.append(o.toString());
+		}
+		self.setJSONArray("data", dataArray);
 		
 		JSONArray inletArray = new JSONArray();
 		for (Inlet inlet : inlets) {
@@ -106,6 +121,13 @@ public abstract class Laxel {
 	public static Laxel fromJSON(JSONObject jsonLaxel) {
 		Laxel laxel = null;
 		UUID uuid = UUID.fromString(jsonLaxel.getString("id"));
+		
+		JSONArray jsonData = jsonLaxel.getJSONArray("data");
+		String[] dataArray = new String[jsonData.size()];
+		for (int i = 0; i < jsonData.size(); i++) {
+			dataArray[i] = jsonData.getString(i);
+		}
+		
 		try {
 			Class<?> c = Class.forName(jsonLaxel.getString("type"));
 			Constructor<?> constructor = c.getConstructor();
@@ -114,6 +136,7 @@ public abstract class Laxel {
 			laxel = (Laxel) object;
 			laxel.uuid = uuid;
 			laxel.foldState = FoldState.valueOf(jsonLaxel.getString("foldState"));
+			laxel.setDataArray(dataArray);
 		} 
 		// lol
 		catch (ClassNotFoundException | NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {

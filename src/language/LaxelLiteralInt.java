@@ -14,6 +14,7 @@ public class LaxelLiteralInt extends Laxel {
 		outlets[0] = new Outlet("i", Integer.class, 0);
 	}
 	
+	
 	public LaxelLiteralInt(int data) {
 		this.data = data;
 		
@@ -25,6 +26,7 @@ public class LaxelLiteralInt extends Laxel {
 		outlets[0] = new Outlet("i", Integer.class, 0);
 	}
 	
+	
 	public boolean execute() {
 		outlets[0].data = data;
 		super.execute();
@@ -35,6 +37,19 @@ public class LaxelLiteralInt extends Laxel {
 	@Override
 	public String[] getEditable() {
 		return new String[] {"int"};
+	}
+	
+	
+	@Override
+	public Object[] getDataArray() {
+		return new Object[] {data};
+	}
+	
+	
+	@Override
+	public void setDataArray(String[] input) {
+		this.data = Integer.valueOf(input[0]);
+		this.displayName = "INT " + this.data;
 	}
 	
 	

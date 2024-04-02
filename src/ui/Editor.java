@@ -19,6 +19,7 @@ import java.util.UUID;
 public class Editor {
 	
 	PGraphics canvas;
+	PGraphics canvasOverview;
 	PGraphics canvasWorking;
 	
 	
@@ -30,28 +31,38 @@ public class Editor {
 	public Laxel point;
 	public Laxel head;
 	
+	public HashMap<String, Laxel> functions;
+	
 	private EditorDialog<?> dialogs = null;
 	
 	private int textHeight = 20;
 	
-	public Editor(PGraphics canvas) {
+	private String[] reservedNames = {
+			"int",
+			"format",
+			"noop",
+			"print",
+	};
+	
+	public Editor(PGraphics canvas, PGraphics canvasOverview) {
 		this.canvas = canvas;
 		
+		this.canvasOverview = canvasOverview;
+		
 		canvasWorking = p.createGraphics(canvas.width, canvas.height);
+		
+		this.functions = new HashMap<String, Laxel>();
 	}
 	
 	public void draw() {
 		canvas.beginDraw();
 		canvas.background(255);
 		
-		
-		
 		if (dialogs != null) {
 			canvasWorking.beginDraw();
 			canvas.image(dialogs.draw(), EditorDialog.gutter, EditorDialog.gutter);
 			canvasWorking.endDraw();
 		}
-		
 		
 		canvas.stroke(0);
 		canvas.noFill();
@@ -63,6 +74,25 @@ public class Editor {
 		renderLaxel(laxelTree);
 		
 		canvas.endDraw();
+		
+		canvasOverview.beginDraw();
+		canvasOverview.background(255);
+		
+		canvasOverview.stroke(0);
+		canvasOverview.noFill();
+		canvasOverview.strokeWeight(1);
+		canvasOverview.rect(0,0,canvasOverview.width - 1,canvasOverview.height - 1);
+		
+		canvasOverview.fill(0);
+		canvasOverview.noStroke();
+		canvasOverview.textAlign(PApplet.LEFT, PApplet.TOP);
+		canvasOverview.text("Main", gutter,gutter);
+		String[] functionNames = functions.keySet().toArray(new String[functions.keySet().size()]);
+		for (int i = 0; i < functionNames.length; i++) {
+			canvasOverview.text(functionNames[i], gutter, (i + 1) * textHeight + gutter);
+		}
+		
+		canvasOverview.endDraw();
 	}
 	
 	
@@ -395,6 +425,10 @@ public class Editor {
 			load();
 		}
 		
+		else if (key == 'n') {
+			dialogs = new DialogCreateFunction();
+		}
+		
 		else if (key == 'r') {
 			dialogs = new DialogReplace(point);
 		}
@@ -450,21 +484,19 @@ public class Editor {
 		
 		public boolean complete = false;
 		
+		public String displayName = "";
+		
 		public boolean keyPressed(int key) {
 			return false;
 		}
 		
 		public PImage draw() {
 			
-			width = baseWidth;
+			width = (int)Math.max(baseWidth, p.textWidth(displayName) + (gutter * 2));
 			height = baseHeight;
 			
-			
-			
 			PImage child = drawLocal();
-			
-
-			//canvasDialog.fill(255);
+	
 			canvasWorking.noFill();
 			canvasWorking.stroke(0);
 			canvasWorking.rect(0,0,width - 1, height - 1);
@@ -476,7 +508,6 @@ public class Editor {
 			PImage output = canvasWorking.get(0,0,width, height);
 			
 			return output;
-			
 		}
 	}
 	
@@ -486,6 +517,7 @@ public class Editor {
 
 		public DialogCreateLaxel() {
 			produceString = new DialogTextEntry();
+			displayName = "LAXEL";
 		}
 
 		@Override
@@ -505,6 +537,10 @@ public class Editor {
 					output = new LaxelFormat();
 			}
 			
+			if (functions.keySet().contains(name)) {
+				output = functions.get(name);
+			}
+			
 			
 			return output;
 		}
@@ -522,7 +558,7 @@ public class Editor {
 			
 			canvasWorking.fill(0);
 			canvasWorking.textAlign(PApplet.LEFT, PApplet.CENTER);
-			canvasWorking.text("LAXEL", gutter, height / 2);
+			canvasWorking.text(displayName, gutter, height / 2);
 			
 			return child;
 		}
@@ -548,6 +584,7 @@ public class Editor {
 		public DialogEditInt(Laxel parent) {
 			produceInt = new DialogTextEntry();
 			this.parent = parent;
+			displayName = "EDIT";
 		}
 
 		@Override
@@ -569,7 +606,7 @@ public class Editor {
 			
 			canvasWorking.fill(0);
 			canvasWorking.textAlign(PApplet.LEFT, PApplet.CENTER);
-			canvasWorking.text("EDIT", gutter, height / 2);
+			canvasWorking.text(displayName, gutter, height / 2);
 			
 			return child;
 		}
@@ -639,6 +676,8 @@ public class Editor {
 			setIOId();
 			
 			produceLaxel = new DialogCreateLaxel();
+			
+			displayName = "INSERT";
 		}
 		
 		private void setIOId() {
@@ -749,8 +788,11 @@ public class Editor {
 			else {
 				if (produceLaxel.keyPressed(key)) {
 					newLaxel = produceLaxel.execute();
-					execute();
-					return true;
+					if (newLaxel != null) {
+						execute();
+						return true;	
+					}
+
 				}
 				return false;
 			}
@@ -768,6 +810,8 @@ public class Editor {
 			this.laxelOld = lexelOld;
 			
 			produceLaxel = new DialogCreateLaxel();
+			
+			displayName = "REPLACE";
 		}
 		
 		@Override
@@ -893,9 +937,9 @@ public class Editor {
 	
 	private class DialogMove extends EditorDialog<Boolean> {
 		
-		EditorDialog<String> produceId;
+		private EditorDialog<String> produceId;
 		
-		Laxel.Direction direction;
+		private Laxel.Direction direction;
 		
 		int id = -1;
 		
@@ -922,6 +966,8 @@ public class Editor {
 					complete = true;
 				}
 			}
+			
+			displayName = "MOVE";
 		}
 
 		@Override
@@ -956,7 +1002,7 @@ public class Editor {
 			canvasWorking.background(255);
 			canvasWorking.fill(0);
 			canvasWorking.textAlign(PApplet.LEFT, PApplet.CENTER);
-			canvasWorking.text("MOVE", gutter, height / 2 - 10);
+			canvasWorking.text(displayName, gutter, height / 2 - 10);
 			canvasWorking.text(direction.toString(), gutter, height / 2 + 10);
 			
 			
@@ -975,6 +1021,60 @@ public class Editor {
 				catch (NumberFormatException e) {
 					produceId = new DialogTextEntry();
 				}
+			}
+			return false;
+		}
+	}
+	
+	
+	private class DialogCreateFunction extends EditorDialog<Boolean> {
+
+		private EditorDialog<String> produceFunctionName = new DialogTextEntry();
+		
+		private String name = "";
+		
+		public DialogCreateFunction() {
+			displayName = "CREATE FUNCTION";
+		}
+		
+		
+		@Override
+		public Boolean execute() {
+			if (functions.containsKey(name) == false) {
+				LaxelFunction function = new LaxelFunction();
+				functions.put(name, function);	
+			}
+			return true;
+		}
+
+		@Override
+		public PImage drawLocal() {
+			PImage child = produceFunctionName.draw();
+			
+			if (child != null) {
+				 width += child.width + gutter;
+				 height = Math.max(child.height + (gutter * 2), height);
+			}
+			
+			canvasWorking.background(255);
+			canvasWorking.fill(0);
+			canvasWorking.textAlign(PApplet.LEFT, PApplet.CENTER);
+			canvasWorking.text(displayName, gutter, height / 2);
+			
+			return child;
+		}
+		
+		@Override
+		public boolean keyPressed(int key) {
+			if (produceFunctionName.keyPressed(key)) {
+				name = produceFunctionName.execute();
+				if (Arrays.asList(reservedNames).contains(name) == false) {
+					execute();	
+				}
+				else {
+					produceFunctionName = new DialogTextEntry();
+				}
+				return true;
 			}
 			return false;
 		}

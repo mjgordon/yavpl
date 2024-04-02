@@ -7,6 +7,7 @@ import processing.core.PGraphics;
 public class YAVPL extends PApplet {
 	PGraphics g_editor;
 	PGraphics g_vm_monitor;
+	PGraphics g_overview;
 	
 	Editor editor;
 	
@@ -25,9 +26,10 @@ public class YAVPL extends PApplet {
 		int a = (width - (gutter * 3)) * 2 / 3;
 		int b = (width - (gutter * 3)) * 1 / 3;
 		g_editor = createGraphics(a, height - (gutter * 2));
-		g_vm_monitor = createGraphics(b, height - (gutter * 2));
+		g_vm_monitor = createGraphics(b, (height - (gutter * 3)) / 2);
+		g_overview = createGraphics(b, (height - (gutter * 3)) / 2);
 		
-		editor = new Editor(g_editor);
+		editor = new Editor(g_editor, g_overview);
 		
 		editor.head = new NOOP();
 		editor.point = editor.head;
@@ -46,9 +48,10 @@ public class YAVPL extends PApplet {
 		g_vm_monitor.stroke(0);
 		g_vm_monitor.rect(0,0,g_vm_monitor.width - 1,g_vm_monitor.height - 1);
 		g_vm_monitor.endDraw();
-		
+				
 		image(g_editor,gutter,gutter);
-		image(g_vm_monitor,g_editor.width + (gutter * 2), gutter);
+		image(g_overview,g_editor.width + (gutter * 2), gutter);
+		image(g_vm_monitor,g_editor.width + (gutter * 2), g_overview.height + (gutter * 2));
 		
 		fill(0);
 		text((int)frameRate, 10, 10);

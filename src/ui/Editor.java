@@ -60,7 +60,7 @@ public class Editor {
 		
 		if (dialogs != null) {
 			canvasWorking.beginDraw();
-			canvas.image(dialogs.draw(), EditorDialog.gutter, EditorDialog.gutter);
+			canvas.image(dialogs.draw(), DrawableDialog.gutter, DrawableDialog.gutter);
 			canvasWorking.endDraw();
 		}
 		
@@ -441,6 +441,10 @@ public class Editor {
 			VM.execute(head);
 		}
 		
+		else if (key == '`') {
+			dialogs = new DialogCommand();
+		}
+		
 		if (dialogs != null && dialogs.complete) {
 			dialogs = null;
 		}
@@ -465,50 +469,87 @@ public class Editor {
 	
 	
 	/**
-	 * Base UI unit. T indicates the expected return type from the dialogs action
+	 * Base UI unit. T indicates the expected return type from the dialogs action upon execution
 	 *
 	 * @param <T>
-	 */
-	private abstract class EditorDialog<T> {	
-		public abstract T execute();
+	 */	
+	private abstract class DrawableDialog {
+		protected DrawableDialog childDialog;
 		
-		public abstract PImage drawLocal();
-	
-		public final static int gutter = 3;
+		protected String displayName = "";
+		protected String subtitle = null;
 		
-		public static final int baseWidth = 100;
-		public static final int baseHeight = 20;
+		protected int width = 100;
+		protected int height = 20;
 		
-		public int width = 100;
-		public int height = 20;
+		private static final int baseWidth = 100;
+		private static final int baseHeight = 20;
 		
-		public boolean complete = false;
+		private final static int gutter = 3;
 		
-		public String displayName = "";
-		
-		public boolean keyPressed(int key) {
-			return false;
-		}
-		
-		public PImage draw() {
+		public final PImage draw() {
 			
 			width = (int)Math.max(baseWidth, p.textWidth(displayName) + (gutter * 2));
 			height = baseHeight;
 			
-			PImage child = drawLocal();
+			PImage childImage = null;
+			
+			if (childDialog != null) {
+				childImage = childDialog.draw();
+			}
+
+
+			if (childImage != null) {
+				 width += childImage.width + gutter;
+				 height = Math.max(childImage.height + (gutter * 2), height);
+			}
+			
+			canvasWorking.background(255);
+				
+			drawLocal();
 	
 			canvasWorking.noFill();
 			canvasWorking.stroke(0);
 			canvasWorking.rect(0,0,width - 1, height - 1);
 			
-			if (child != null) {
-				canvasWorking.image(child, width - gutter - child.width, height / 2 - child.height / 2);	
+			if (childImage != null) {
+				canvasWorking.image(childImage, width - gutter - childImage.width, height / 2 - childImage.height / 2);	
 			}
 				
 			PImage output = canvasWorking.get(0,0,width, height);
 			
 			return output;
 		}
+		
+		
+		/**
+		 * By default, draws the dialog name and subtitle
+		 * Override if additional functionality is needed
+		 */
+		protected void drawLocal() {
+			canvasWorking.fill(0);
+			canvasWorking.textAlign(PApplet.LEFT, PApplet.CENTER);
+			
+			if (subtitle == null) {
+				canvasWorking.text(displayName, gutter, height / 2);	
+			}
+			else {
+				height += 16;
+				canvasWorking.text(displayName, gutter, height / 2 - 10);	
+				canvasWorking.text(subtitle, gutter, height / 2 + 10);	
+			}
+		}
+	}
+	
+	
+	private abstract class EditorDialog<T> extends DrawableDialog {	
+		protected abstract T execute();
+		
+		public boolean complete = false;
+		
+		public boolean keyPressed(int key) {
+			return false;
+		}	
 	}
 	
 	
@@ -517,6 +558,7 @@ public class Editor {
 
 		public DialogCreateLaxel() {
 			produceString = new DialogTextEntry();
+			childDialog = produceString;
 			displayName = "LAXEL";
 		}
 
@@ -541,26 +583,7 @@ public class Editor {
 				output = functions.get(name);
 			}
 			
-			
 			return output;
-		}
-		
-		@Override
-		public PImage drawLocal() {	
-			PImage child = produceString.draw();
-			
-			if (child != null) {
-				 width += child.width + gutter;
-				 height = Math.max(child.height + (gutter * 2), height);
-			}
-			
-			canvasWorking.background(255);
-			
-			canvasWorking.fill(0);
-			canvasWorking.textAlign(PApplet.LEFT, PApplet.CENTER);
-			canvasWorking.text(displayName, gutter, height / 2);
-			
-			return child;
 		}
 		
 		@Override
@@ -583,6 +606,7 @@ public class Editor {
 		
 		public DialogEditInt(Laxel parent) {
 			produceInt = new DialogTextEntry();
+			childDialog = produceInt;
 			this.parent = parent;
 			displayName = "EDIT";
 		}
@@ -591,24 +615,6 @@ public class Editor {
 		public Boolean execute() {
 			parent.editValue(value);
 			return true;
-		}
-
-		@Override
-		public PImage drawLocal() {
-			PImage child = produceInt.draw();
-			
-			if (child != null) {
-				 width += child.width + gutter;
-				 height = Math.max(child.height + (gutter * 2), height);
-			}
-			
-			canvasWorking.background(255);
-			
-			canvasWorking.fill(0);
-			canvasWorking.textAlign(PApplet.LEFT, PApplet.CENTER);
-			canvasWorking.text(displayName, gutter, height / 2);
-			
-			return child;
 		}
 		
 		@Override
@@ -628,7 +634,6 @@ public class Editor {
 			}
 			return false;
 		}
-		
 	}
 	
 	
@@ -671,13 +676,19 @@ public class Editor {
 			// Inlets and outlets
 			else if (hkState == 3) {
 				produceSide = new DialogHotkey(new char[]{'i','o'});	
+				childDialog = produceSide;
 			}
 			
 			setIOId();
 			
 			produceLaxel = new DialogCreateLaxel();
 			
+			if (childDialog == null) {
+				childDialog = produceLaxel;
+			}
+			
 			displayName = "INSERT";
+			setSubtitle();
 		}
 		
 		private void setIOId() {
@@ -705,6 +716,26 @@ public class Editor {
 				}
 				produceIOId = new DialogHotkey(Arrays.copyOfRange(numberKeys, 0, length));
 			}
+			
+			if (childDialog == null && id != 0) {
+				childDialog = produceIOId;
+			}
+		}
+		
+		
+		private void setSubtitle() {
+			if (direction == Laxel.Direction.INLET) {
+				subtitle = "INLET";
+			}
+			else if (direction == Laxel.Direction.OUTLET) {
+				subtitle = "OUTLET";
+			}
+			
+			if (direction != Laxel.Direction.NONE) {
+				if (id > -1) {
+					subtitle += " " + id;
+				}
+			}
 		}
 		
 
@@ -721,43 +752,6 @@ public class Editor {
 			return true;
 		}
 
-		@Override
-		public PImage drawLocal() {
-			height += 20;
-			
-			PImage child = null;
-			if (direction == Laxel.Direction.NONE) {
-				child = produceSide.draw();
-			}
-			else if (id == -1) {
-				child = produceIOId.draw();
-			}
-			else {
-				child = produceLaxel.draw();
-			}
-			
-			
-			if (child != null) {
-				 width += child.width + gutter;
-				 height = Math.max(child.height + (gutter * 2), height);
-			}
-			
-			canvasWorking.background(255);
-			canvasWorking.fill(0);
-			canvasWorking.textAlign(PApplet.LEFT, PApplet.CENTER);
-			
-			String title = "INSERT";
-			if (direction == Laxel.Direction.INLET) {
-				title += " INLET";
-			}
-			else if (direction == Laxel.Direction.OUTLET) {
-				title += " OUTLET";
-			}	
-			
-			canvasWorking.text(title, gutter, height / 2);
-			
-			return child;
-		}
 		
 		@Override
 		public boolean keyPressed(int key) {
@@ -770,8 +764,15 @@ public class Editor {
 					else if (c == 'o') {
 						direction = Laxel.Direction.OUTLET;
 					}
+					
+					if (id == -1) {
+						childDialog = produceIOId;
+					}
+					else if (id == 0) {
+						childDialog = produceLaxel;
+					}
 				}
-				return false;
+				
 			}
 			else if (id == -1) {
 				if (produceIOId.keyPressed(key)) {
@@ -782,8 +783,11 @@ public class Editor {
 					catch (NumberFormatException e) {
 						setIOId();
 					}
+					
+					if (id != -1) {
+						childDialog = produceLaxel;
+					}
 				}
-				return false;
 			}
 			else {
 				if (produceLaxel.keyPressed(key)) {
@@ -792,10 +796,10 @@ public class Editor {
 						execute();
 						return true;	
 					}
-
 				}
-				return false;
 			}
+			setSubtitle();
+			return false;
 		}
 	}
 	
@@ -810,29 +814,12 @@ public class Editor {
 			this.laxelOld = lexelOld;
 			
 			produceLaxel = new DialogCreateLaxel();
+			childDialog = produceLaxel;
 			
 			displayName = "REPLACE";
+			subtitle = laxelOld.displayName;
 		}
 		
-		@Override
-		public PImage drawLocal() {
-			height += 20;
-			
-			PImage child = produceLaxel.draw();
-			
-			if (child != null) {
-				 width += child.width + gutter;
-				 height = Math.max(child.height + (gutter * 2), height);
-			}
-			
-			canvasWorking.background(255);
-			canvasWorking.fill(0);
-			canvasWorking.textAlign(PApplet.LEFT, PApplet.CENTER);
-			canvasWorking.text("REPLACE", gutter, height / 2);
-			canvasWorking.text(laxelOld.displayName, gutter, height / 2 + 12);
-			
-			return child;
-		}
 		
 		@Override
 		public Boolean execute() {
@@ -876,19 +863,10 @@ public class Editor {
 					entry = entry.substring(0,entry.length() - 1);
 				}
 			}
+			this.displayName = entry;
 			return executeFlag;
 		}
 		
-		
-		@Override
-		public PImage drawLocal() {
-			canvasWorking.background(255);
-			canvasWorking.fill(0);
-			canvasWorking.textAlign(PApplet.LEFT, PApplet.CENTER);
-			canvasWorking.text(entry, gutter, height / 2);
-			
-			return null;
-		}
 		
 		@Override
 		public String execute() {
@@ -907,6 +885,8 @@ public class Editor {
 			for (char c : inputs) {
 				characters.add(c);
 			}
+			
+			this.displayName = characters.toString();
 		}
 
 		@Override
@@ -914,15 +894,6 @@ public class Editor {
 			return output;
 		}
 
-		@Override
-		public PImage drawLocal() {
-			canvasWorking.background(255);
-			canvasWorking.fill(0);
-			canvasWorking.textAlign(PApplet.LEFT, PApplet.CENTER);
-			canvasWorking.text(characters.toString(), gutter, height / 2);
-			
-			return null;
-		}
 		
 		@Override
 		public boolean keyPressed(int key) {
@@ -931,9 +902,9 @@ public class Editor {
 				return true;
 			}
 			return false;
-		}
-		
+		}	
 	}
+	
 	
 	private class DialogMove extends EditorDialog<Boolean> {
 		
@@ -947,6 +918,7 @@ public class Editor {
 			this.direction = direction;
 			
 			produceId = new DialogTextEntry();
+			childDialog = produceId;
 			
 			if (direction == Laxel.Direction.INLET) {
 				if (point.inlets.length == 1) {
@@ -968,6 +940,7 @@ public class Editor {
 			}
 			
 			displayName = "MOVE";
+			subtitle = direction.toString();
 		}
 
 		@Override
@@ -986,27 +959,6 @@ public class Editor {
 				}
 			}
 			return true;
-		}
-
-		@Override
-		public PImage drawLocal() {
-			height += 20;
-			
-			PImage child = produceId.draw();
-			
-			if (child != null) {
-				 width += child.width + gutter;
-				 height = Math.max(child.height + (gutter * 2), height);
-			}
-			
-			canvasWorking.background(255);
-			canvasWorking.fill(0);
-			canvasWorking.textAlign(PApplet.LEFT, PApplet.CENTER);
-			canvasWorking.text(displayName, gutter, height / 2 - 10);
-			canvasWorking.text(direction.toString(), gutter, height / 2 + 10);
-			
-			
-			return child;
 		}
 		
 		@Override 
@@ -1029,12 +981,15 @@ public class Editor {
 	
 	private class DialogCreateFunction extends EditorDialog<Boolean> {
 
-		private EditorDialog<String> produceFunctionName = new DialogTextEntry();
+		private EditorDialog<String> produceFunctionName;
 		
 		private String name = "";
 		
 		public DialogCreateFunction() {
 			displayName = "CREATE FUNCTION";
+			
+			produceFunctionName = new DialogTextEntry();
+			childDialog = produceFunctionName;
 		}
 		
 		
@@ -1045,23 +1000,6 @@ public class Editor {
 				functions.put(name, function);	
 			}
 			return true;
-		}
-
-		@Override
-		public PImage drawLocal() {
-			PImage child = produceFunctionName.draw();
-			
-			if (child != null) {
-				 width += child.width + gutter;
-				 height = Math.max(child.height + (gutter * 2), height);
-			}
-			
-			canvasWorking.background(255);
-			canvasWorking.fill(0);
-			canvasWorking.textAlign(PApplet.LEFT, PApplet.CENTER);
-			canvasWorking.text(displayName, gutter, height / 2);
-			
-			return child;
 		}
 		
 		@Override
@@ -1078,7 +1016,37 @@ public class Editor {
 			}
 			return false;
 		}
-		
 	}
 	
+	
+	public class DialogCommand extends EditorDialog<Boolean> {
+		
+		EditorDialog<String> produceCommand;
+
+		String command = "";
+		
+		public DialogCommand() {
+			this.produceCommand = new DialogTextEntry();
+			childDialog = produceCommand;
+			this.displayName = "COMMAND";
+		}
+		
+		@Override
+		public Boolean execute() {
+			if (command.equals("inlet")) {
+				
+				return false;
+			}
+			return false;
+		}
+		
+		@Override 
+		public boolean keyPressed(int key) {
+			if (produceCommand.keyPressed(key)) {
+				this.command = produceCommand.execute();	
+			}
+			
+			return execute();
+		}
+	}
 }

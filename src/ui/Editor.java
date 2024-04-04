@@ -922,8 +922,14 @@ public class Editor {
 			
 			if (direction == Laxel.Direction.INLET) {
 				if (point.inlets.length == 1) {
-					id = 0;
-					execute();
+					if (point.inlets[0].target == null) {
+						complete = true;
+					}
+					else {
+						id = 0;
+						execute();	
+					}
+					
 				}
 				else if (point.inlets.length == 0) {
 					complete = true;
@@ -931,8 +937,13 @@ public class Editor {
 			}
 			else if (direction == Laxel.Direction.OUTLET) {
 				if (point.outlets.length == 1) {
-					id = 0;
-					execute();
+					if (point.outlets[0].target == null) {
+						complete = true;
+					}
+					else {
+						id = 0;
+						execute();	
+					}
 				}
 				else if (point.outlets.length == 0) {
 					complete = true;
@@ -946,14 +957,15 @@ public class Editor {
 		@Override
 		public Boolean execute() {
 			if (direction == Laxel.Direction.INLET) {
-				if (point.inlets.length > id) {
+				if (point.inlets.length > id && point.inlets[id].target != null) {
 					point = point.inlets[id].target;
 					complete = true;
 				}
 				
+				
 			}
 			else if (direction == Laxel.Direction.OUTLET) {
-				if (point.outlets.length > id) {
+				if (point.outlets.length > id && point.outlets[id].target != null) {
 					point = point.outlets[id].target;
 					complete = true;
 				}
